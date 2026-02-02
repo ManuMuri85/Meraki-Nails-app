@@ -1,0 +1,152 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  NO_SHOW
+  COMPLETED
+}
+
+enum PaymentMethod {
+  CASH
+  SINPE
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  REFUNDED
+}
+
+model Salon {
+  id        String   @id @default(cuid())
+  name      String
+  country   String   @default("Costa Rica")
+  timezone  String   @default("America/Costa_Rica")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cabins    Cabin[]
+  services  Service[]
+  clients   Client[]
+  bookings  Booking[]
+  campaigns AdCampaign[]
+}
+
+model Cabin {
+  id        String   @id @default(cuid())
+  salonId   String
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  salon     Salon    @relation(fields: [salonId], references: [id])
+  bookings  Booking[]
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  salonId   String
+  fullName  String
+  phone     String
+  email     String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  salon     Salon    @relation(fields: [salonId], references: [id])
+  bookings  Booking[]
+
+  @@index([salonId])
+  @@index([phone])
+}
+
+model Service {
+  id          String   @id @default(cuid())
+  salonId     String
+  category    String
+  name        String
+  priceCrc    Int
+  durationMin Int
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  salon       Salon    @relation(fields: [salonId], references: [id])
+  bookings    Booking[]
+
+  @@index([salonId])
+  @@index([category])
+}
+
+model Booking {
+  id            String        @id @default(cuid())
+  salonId       String
+  cabinId       String
+  clientId      String
+  serviceId     String
+
+  startsAt      DateTime
+  endsAt        DateTime
+  status        BookingStatus @default(PENDING)
+
+  depositPct    Int           @default(20)
+  depositCrc    Int           @default(0)
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  salon         Salon         @relation(fields: [salonId], references: [id])
+  cabin         Cabin         @relation(fields: [cabinId], references: [id])
+  client        Client        @relation(fields: [clientId], references: [id])
+  service       Service       @relation(fields: [serviceId], references: [id])
+  payment       Payment?
+
+  @@index([salonId])
+  @@index([startsAt])
+  @@index([cabinId, startsAt])
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  bookingId   String        @unique
+  method      PaymentMethod @default(SINPE)
+  status      PaymentStatus @default(PENDING)
+
+  sinpePhone  String?
+  reference   String?
+  amountCrc   Int           @default(0)
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  booking     Booking       @relation(fields: [bookingId], references: [id])
+}
+
+model AdCampaign {
+  id          String   @id @default(cuid())
+  salonId     String
+  brandName   String
+  title       String
+  imageUrl    String?
+  targetUrl   String?
+  startsAt    DateTime?
+  endsAt      DateTime?
+  isActive    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  salon       Salon    @relation(fields: [salonId], references: [id])
+
+  @@index([salonId])
+  @@index([isActive])
+}
